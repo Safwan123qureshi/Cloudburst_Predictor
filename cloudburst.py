@@ -52,7 +52,7 @@ model.fit(X, y)
 st.title("🌧️ Worldwide Cloudburst Predictor")
 
 country = st.text_input("Country Name")
-state = st.text_input("State / Province")
+state = st.text_input("State / Province (optional)")
 city = st.text_input("City Name")
 
 # =====================================
@@ -106,7 +106,7 @@ if st.button("Check Weather & Predict"):
             # GEO API
             # =====================================
 
-            geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{state},{country_code}&limit=5&appid={API_KEY}"
+           geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{country_code}&limit=5&appid={API_KEY}"
 
             geo_response = requests.get(geo_url)
 
@@ -126,19 +126,11 @@ if st.button("Check Weather & Predict"):
                 found = False
 
                 for place in geo_data:
-
-                    api_city = place['name'].lower()
-                    api_country = place['country']
-
-                    # Exact city + country match
-                    if api_city == city.lower() and api_country == country_code:
-
-                        found = True
-
-                        lat = place['lat']
-                        lon = place['lon']
-
-                        break
+                    if place['country'] == country_code:
+                       found = True
+                    lat = place['lat']
+                    lon = place['lon']
+                    break
 
                 # Country mismatch
                 if found == False:
