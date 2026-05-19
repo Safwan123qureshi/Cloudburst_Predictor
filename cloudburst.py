@@ -52,6 +52,7 @@ model.fit(X, y)
 st.title("🌧️ Worldwide Cloudburst Predictor")
 
 country = st.text_input("Country Name")
+state = st.text_input("State / Province")
 city = st.text_input("City Name")
 
 # =====================================
