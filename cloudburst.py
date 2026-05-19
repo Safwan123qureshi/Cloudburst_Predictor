@@ -24,7 +24,10 @@ data['Cloudburst'] = data['rainfall_mm'].apply(
     lambda x: 1 if x > 50 else 0
 )
 
-# Features
+# =====================================
+# FEATURES & TARGET
+# =====================================
+
 X = data[[
     'temperature_c',
     'humidity_pct',
@@ -33,7 +36,6 @@ X = data[[
     'cloud_cover_pct'
 ]]
 
-# Target
 y = data['Cloudburst']
 
 # =====================================
@@ -95,7 +97,6 @@ if st.button("Check Weather & Predict"):
             if user_country not in country_codes:
 
                 st.error("❌ Country not supported")
-
                 st.stop()
 
             country_code = country_codes[user_country]
@@ -117,11 +118,19 @@ if st.button("Check Weather & Predict"):
 
             else:
 
+                # =====================================
+                # STRICT COUNTRY VALIDATION
+                # =====================================
+
                 found = False
 
                 for place in geo_data:
 
-                    if place['country'] == country_code:
+                    api_city = place['name'].lower()
+                    api_country = place['country']
+
+                    # Exact city + country match
+                    if api_city == city.lower() and api_country == country_code:
 
                         found = True
 
@@ -134,7 +143,6 @@ if st.button("Check Weather & Predict"):
                 if found == False:
 
                     st.error("❌ City does not belong to this country")
-
                     st.stop()
 
                 # =====================================
@@ -210,3 +218,4 @@ if st.button("Check Weather & Predict"):
         except:
 
             st.error("❌ Something went wrong")
+         
