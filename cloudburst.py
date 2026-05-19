@@ -106,7 +106,7 @@ if st.button("Check Weather & Predict"):
             # GEO API
             # =====================================
 
-            geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=5&appid={API_KEY}"
+            geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{state},{country_code}&limit=5&appid={API_KEY}"
 
             geo_response = requests.get(geo_url)
 
