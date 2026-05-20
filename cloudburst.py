@@ -73,6 +73,19 @@ country_codes = {
     "united kingdom": "GB"
 }
 
+country_names = {
+    "PK": "Pakistan",
+    "IN": "India",
+    "US": "United States",
+    "CN": "China",
+    "CA": "Canada",
+    "AU": "Australia",
+    "DE": "Germany",
+    "FR": "France",
+    "JP": "Japan",
+    "GB": "United Kingdom"
+}
+
 # =====================================
 # BUTTON
 # =====================================
@@ -105,7 +118,7 @@ if st.button("Check Weather & Predict"):
             # GEO API
             # =====================================
 
-            geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=5&appid={API_KEY}"
+            geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{country_code}&limit=5&appid={API_KEY}"
 
             geo_response = requests.get(geo_url)
 
@@ -123,19 +136,42 @@ if st.button("Check Weather & Predict"):
                 # =====================================
 
                 found = False
+                resolved_city = ""
+                resolved_state = ""
+                resolved_country = ""
 
                 for place in geo_data:
 
                     api_city = place['name'].lower()
                     api_country = place['country']
+                    city_input = city.lower().strip()
 
-                    # Exact city + country match
-                    if api_city == city.lower() and api_country == country_code:
+                    # Also check the English local name (e.g. "Peshawar" vs "Peshawar City Tehsil")
+                    en_local = place.get('local_names', {}).get('en', '').lower()
+
+                    # Flexible city match: exact, startswith, or substring in either
+                    # the primary name or the English local name.
+                    # Country code check remains strict.
+                    city_match = (
+                        api_city == city_input
+                        or api_city.startswith(city_input)
+                        or city_input in api_city
+                        or (en_local and (
+                            en_local == city_input
+                            or en_local.startswith(city_input)
+                            or city_input in en_local
+                        ))
+                    )
+
+                    if city_match and api_country == country_code:
 
                         found = True
 
                         lat = place['lat']
                         lon = place['lon']
+                        resolved_city = place['name']
+                        resolved_state = place.get('state', '')
+                        resolved_country = country_names.get(place['country'], place['country'])
 
                         break
 
@@ -172,7 +208,12 @@ if st.button("Check Weather & Predict"):
 
                 st.subheader("🌍 Live Weather Information")
 
-                st.write(f"📍 Location: {city}, {country}")
+                location_display = resolved_city
+                if resolved_state:
+                    location_display += f", {resolved_state}"
+                location_display += f", {resolved_country}"
+
+                st.write(f"📍 Location: {location_display}")
                 st.write(f"🌡️ Temperature: {temp} °C")
                 st.write(f"💧 Humidity: {hum}%")
                 st.write(f"📉 Pressure: {press} hPa")
