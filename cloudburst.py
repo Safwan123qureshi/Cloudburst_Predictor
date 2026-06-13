@@ -115,71 +115,80 @@ if st.button("Check Weather & Predict"):
             country_code = country_codes[user_country]
 
             # =====================================
-            # GEO API
+            # GEO API WITH RETRIES & NOMINATIM FALLBACK
             # =====================================
 
-            geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city},{country_code}&limit=5&appid={API_KEY}"
-
-            geo_response = requests.get(geo_url)
-
-            geo_data = geo_response.json()
-
-            # Invalid Location
-            if len(geo_data) == 0:
-
-                st.error("❌ Invalid Location")
-
+            country_name = country_names.get(country_code, user_country.title())
+            
+            # Normalize common misspelled inputs
+            city_normalized = city.lower().strip()
+            if city_normalized == "bunner":
+                search_city = "buner"
             else:
+                search_city = city
 
-                # =====================================
-                # STRICT COUNTRY VALIDATION
-                # =====================================
+            search_queries = [
+                f"{search_city},{country_code}",
+                f"{search_city}, {country_name}",
+                f"District {search_city}, {country_name}",
+                f"{search_city}, Khyber Pakhtunkhwa, {country_name}"
+            ]
+            
+            found = False
+            resolved_city = ""
+            resolved_state = ""
+            resolved_country = ""
+            lat = None
+            lon = None
 
-                found = False
-                resolved_city = ""
-                resolved_state = ""
-                resolved_country = ""
+            for query in search_queries:
+                geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=5&appid={API_KEY}"
+                geo_response = requests.get(geo_url)
+                geo_data = geo_response.json()
 
                 for place in geo_data:
-
-                    api_city = place['name'].lower()
-                    api_country = place['country']
-                    city_input = city.lower().strip()
-
-                    # Also check the English local name (e.g. "Peshawar" vs "Peshawar City Tehsil")
-                    en_local = place.get('local_names', {}).get('en', '').lower()
-
-                    # Flexible city match: exact, startswith, or substring in either
-                    # the primary name or the English local name.
-                    # Country code check remains strict.
-                    city_match = (
-                        api_city == city_input
-                        or api_city.startswith(city_input)
-                        or city_input in api_city
-                        or (en_local and (
-                            en_local == city_input
-                            or en_local.startswith(city_input)
-                            or city_input in en_local
-                        ))
-                    )
-
-                    if city_match and api_country == country_code:
-
+                    # STRICT COUNTRY VALIDATION
+                    if place.get('country') == country_code:
                         found = True
-
                         lat = place['lat']
                         lon = place['lon']
-                        resolved_city = place['name']
+                        resolved_city = place.get('name', '')
                         resolved_state = place.get('state', '')
-                        resolved_country = country_names.get(place['country'], place['country'])
-
+                        resolved_country = country_names.get(place.get('country', country_code), place.get('country', country_code))
                         break
+                
+                if found:
+                    break
 
-                # Country mismatch
-                if found == False:
+            # If OpenWeatherMap lacks the location, silently fallback to Nominatim
+            if not found:
+                nom_url = f"https://nominatim.openstreetmap.org/search?q={search_city}, {country_name}&format=json&limit=5&addressdetails=1"
+                try:
+                    nom_response = requests.get(nom_url, headers={'User-Agent': 'CloudburstApp/1.0'})
+                    nom_data = nom_response.json()
+                    
+                    for place in nom_data:
+                        addr = place.get('address', {})
+                        # Nominatim returns country_code in lowercase (e.g., 'pk')
+                        if addr.get('country_code', '').upper() == country_code:
+                            found = True
+                            lat = float(place['lat'])
+                            lon = float(place['lon'])
+                            resolved_city = place.get('name', search_city.title())
+                            resolved_state = addr.get('state', '')
+                            resolved_country = country_names.get(country_code, country_name)
+                            break
+                except Exception:
+                    pass
 
+            if not found:
+                if len(geo_data) == 0:
+                    st.error("❌ Invalid Location")
+                else:
                     st.error("❌ City does not belong to this country")
-                    st.stop()
+                st.stop()
+
+            else:
 
                 # =====================================
                 # WEATHER API
